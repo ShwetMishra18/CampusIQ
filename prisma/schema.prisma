@@ -1,0 +1,246 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  STUDENT
+  FACULTY
+  ADMIN
+}
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  COMPLETED
+}
+enum BookingPurpose {
+  LECTURE
+  PRACTICAL
+  EXAMINATION
+  EVENT
+}
+enum NotificationType {
+  BOOKING_STATUS
+  VENUE_CHANGE
+  SCHEDULE_CHANGE
+  BOOKING_CANCELLED
+  NOTICE_PUBLISHED
+}
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique @db.VarChar(254)
+  passwordHash String
+  name String @db.VarChar(140)
+  role UserRole
+  branch String? @db.VarChar(80)
+  year Int?
+  semester Int?
+  section String? @db.VarChar(40)
+  isActive Boolean @default(true)
+  isDemo Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bookings Booking[] @relation("BookingRequester")
+  reviewedBookings Booking[] @relation("BookingReviewer")
+  schedulesCreated AcademicSchedule[] @relation("ScheduleCreator")
+  teachingSchedules AcademicSchedule[] @relation("ScheduleFaculty")
+  noticesCreated ExaminationNotice[] @relation("NoticeCreator")
+  announcementsCreated Announcement[] @relation("AnnouncementCreator")
+  notifications Notification[]
+  auditLogs AuditLog[]
+  @@index([role, isActive])
+  @@index([branch, year, semester, section])
+}
+
+model Building {
+  id String @id @default(uuid()) @db.Uuid
+  code String @db.VarChar(40)
+  name String @db.VarChar(160)
+  description String?
+  isActive Boolean @default(true)
+  isDemo Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  floors Floor[]
+  rooms Room[]
+  @@index([isDemo, isActive])
+  @@unique([isDemo, code])
+}
+
+model Floor {
+  id String @id @default(uuid()) @db.Uuid
+  buildingId String @db.Uuid
+  name String @db.VarChar(80)
+  sortOrder Int @default(0)
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  rooms Room[]
+  @@unique([buildingId, name])
+  @@index([buildingId, sortOrder])
+}
+
+model Room {
+  id String @id @default(uuid()) @db.Uuid
+  buildingId String @db.Uuid
+  floorId String? @db.Uuid
+  code String @db.VarChar(80)
+  name String @db.VarChar(160)
+  roomType String @default("classroom") @db.VarChar(60)
+  status String @default("available") @db.VarChar(40)
+  capacity Int?
+  isActive Boolean @default(true)
+  isDemo Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  floor Floor? @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  bookings Booking[]
+  schedules AcademicSchedule[]
+  @@unique([buildingId, code])
+  @@index([isDemo, buildingId, floorId, isActive])
+  @@index([capacity])
+}
+
+model Subject {
+  id String @id @default(uuid()) @db.Uuid
+  code String? @db.VarChar(40)
+  name String @db.VarChar(160)
+  branch String? @db.VarChar(80)
+  year Int?
+  semester Int?
+  isDemo Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  schedules AcademicSchedule[]
+  @@unique([isDemo, code])
+}
+
+model Booking {
+  id String @id @default(uuid()) @db.Uuid
+  requesterId String @db.Uuid
+  roomId String @db.Uuid
+  purpose BookingPurpose
+  details String @db.VarChar(500)
+  bookingDate DateTime @db.Date
+  startAt DateTime @db.Timestamptz(3)
+  endAt DateTime @db.Timestamptz(3)
+  status BookingStatus @default(PENDING)
+  isDemo Boolean @default(false)
+  reviewerId String? @db.Uuid
+  reviewNote String? @db.VarChar(500)
+  cancelledAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  requester User @relation("BookingRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  reviewer User? @relation("BookingReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  notifications Notification[]
+  @@index([isDemo, roomId, bookingDate, status])
+  @@index([requesterId, createdAt])
+}
+
+model AcademicSchedule {
+  id String @id @default(uuid()) @db.Uuid
+  subjectId String @db.Uuid
+  roomId String @db.Uuid
+  facultyId String? @db.Uuid
+  branch String? @db.VarChar(80)
+  year Int?
+  semester Int?
+  section String? @db.VarChar(40)
+  isDemo Boolean @default(false)
+  startsAt DateTime @db.Timestamptz(3)
+  endsAt DateTime @db.Timestamptz(3)
+  createdById String @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  creator User @relation("ScheduleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  faculty User? @relation("ScheduleFaculty", fields: [facultyId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+  @@index([branch, year, semester, section, startsAt])
+  @@index([isDemo, roomId, startsAt, endsAt])
+}
+
+model ExaminationNotice {
+  id String @id @default(uuid()) @db.Uuid
+  title String @db.VarChar(200)
+  body String @db.Text
+  examDate DateTime? @db.Date
+  venue String? @db.VarChar(160)
+  branch String? @db.VarChar(80)
+  year Int?
+  semester Int?
+  section String? @db.VarChar(40)
+  isDemo Boolean @default(false)
+  publishedAt DateTime?
+  createdById String @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  creator User @relation("NoticeCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  notifications Notification[]
+  @@index([branch, year, semester, section, publishedAt])
+}
+
+model Announcement {
+  id String @id @default(uuid()) @db.Uuid
+  title String @db.VarChar(200)
+  body String @db.Text
+  category String @db.VarChar(80)
+  branch String? @db.VarChar(80)
+  year Int?
+  semester Int?
+  section String? @db.VarChar(40)
+  isDemo Boolean @default(false)
+  publishedAt DateTime?
+  createdById String @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  creator User @relation("AnnouncementCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  notifications Notification[]
+  @@index([branch, year, semester, section, publishedAt])
+}
+
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  type NotificationType
+  title String @db.VarChar(200)
+  body String @db.Text
+  bookingId String? @db.Uuid
+  scheduleId String? @db.Uuid
+  examinationNoticeId String? @db.Uuid
+  isRead Boolean @default(false)
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  schedule AcademicSchedule? @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  examinationNotice ExaminationNotice? @relation(fields: [examinationNoticeId], references: [id], onDelete: Cascade)
+  @@index([userId, isRead, createdAt])
+}
+
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String @db.Uuid
+  action String @db.VarChar(80)
+  entityType String @db.VarChar(80)
+  entityId String @db.VarChar(80)
+  previousData Json?
+  newData Json?
+  createdAt DateTime @default(now())
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model SiteSetting {
+  key String @id @db.VarChar(80)
+  value Json
+  updatedAt DateTime @updatedAt
+}

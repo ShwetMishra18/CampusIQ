@@ -1,0 +1,47 @@
+{
+  "name": "campusiq",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "api": "node --env-file-if-exists=.env server/index.js",
+    "dev:all": "concurrently -k \"npm:api\" \"npm:dev\"",
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "build": "vite build",
+    "preview": "vite preview",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:create-user": "node --env-file-if-exists=.env server/scripts/create-user.js",
+    "test": "node --test test/store.test.js"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "@vitejs/plugin-react": "latest",
+    "bcryptjs": "3.0.3",
+    "dotenv": "17.4.2",
+    "express": "^5.1.0",
+    "jsonwebtoken": "9.0.3",
+    "lucide-react": "latest",
+    "pg": "8.16.3",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "latest",
+    "swagger-ui-express": "5.0.1",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "autoprefixer": "latest",
+    "concurrently": "^9.2.1",
+    "postcss": "latest",
+    "prisma": "7.10.1",
+    "tailwindcss": "^3.4.17"
+  },
+  "allowScripts": {
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true
+  }
+}
